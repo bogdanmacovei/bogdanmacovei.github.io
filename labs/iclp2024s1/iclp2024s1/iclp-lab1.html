@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICLP Lab 1</title>
+    <link rel="stylesheet" href="lab-styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+    <nav id="sidebar" class="collapsed">
+        <button id="toggle-btn">&#9776;</button>
+        <ul>
+            <li><a href="#recap">Terminologie</a></li>
+			<li><a href="#processes">Procese</a></li>
+			<ul>
+				<li style="padding-left: 17px; font-size:11px;"><a href="#process-intuition">Intuitie</a></li>
+				<li style="padding-left: 17px; font-size:11px;"><a href="#process-differences">Diferente intre program si proces</a></li>
+				<li style="padding-left: 17px; font-size:11px;"><a href="#process-pcb">Process Control Block</a></li>
+				<li style="padding-left: 17px; font-size:11px;"><a href="#process-states">Starile procesului</a></li>
+				<li style="padding-left: 17px; font-size:11px;"><a href="#process-virtual-memory">Memoria virtuala</a></li>
+				<li style="padding-left: 17px; font-size:11px;"><a href="#process-zombie">Terminarea proceselor. Procese zombie. Sincronizarea tata-fiu</a></li>
+			</ul>
+        </ul>
+    </nav>
+
+    <div id="main-content">
+		<h1>ICLP - Laboratorul 1</h1>
+		<div style="padding-top:10px"></div>
+
+        <section id="recap">
+            <h2>Terminologie</h2>
+				<i>(amintiri de la Arhitectura Sistemelor si Sisteme de Operare)</i>
+            <button type="button" class="collapsible">Ce este un <b>sistem de operare</b>?</button>
+            <div class="content">
+                <p>Un sistem de operare este un produs software care se ocupa cu gestionarea si coordonarea activitătilor unui sistem de calcul. 
+					El mediaza accesul programelor de aplicatie la resursele masinii.
+				</p>
+            </div>
+
+			<button type="button" class="collapsible">Ce este un <b>shell</b>?</button>
+            <div class="content">
+                <p>Un <b>shell</b> este un produs software care asigura interfata cu utilizatorul. 
+					El este rulat de catre o consola care poarta numele de <i>terminal</i> pe distributiile Linux.
+					Exista mai multe tipuri de <b>shell</b> in Linux, cel mai folosit fiind <b>bash</b>-ul (<i>Bourne Again Shell</i>)
+					Un prompt in <b>shell</b> are urmatorul format:
+					<pre><code>username@localhost:~$</code></pre>
+					<ul>
+						<li><b>username</b> reprezinta numele utilizatorului logat in acel moment</li>
+						<li><b>localhost</b> reprezinta numele statiei de lucru</li>
+						<li><b>~</b> indica directorul curent, corespunzator home-ului utilizatorului. De obicei este <i>/home/username</i></li>
+						<li><b>$</b> marcheaza terminarea promptului si inceperea zonei unde utilizatorul poate introduce comenzi</li>
+					</ul>
+					<pre><code>bogdan@bmacoveiPC:~$</code></pre>
+				</p>
+            </div>
+
+			<button type="button" class="collapsible">Ce este o <b>comanda</b>?</button>
+			<div class="content">
+				<b>Comenzile</b> sunt cuvinte cheie pe care utilizatorul le introduce in interpretorul de comenzi pentru a configura sistemul sau pentru a obtine anumite rezultate. 
+				O comanda poate fi <i>simpla</i> (formata dintr-un singur cuvant) sau <i>compusa</i> (contine argumente suplimentare separate prin spatiu si care sunt marcate, de cele mai multe ori, prin "-").
+				Exemple:
+				<pre><code>
+$ ls					"listeaza continutul directorului curent"
+$ ls -l 				"listeaza continutul cu informatii aditionale - dimensiunea, data ultimei modificari etc."
+$ man command_name			"ofera informatii despre comanda command_name"
+$ command_name --help 			"la fel ca man"
+$ cd path/folder_name 			"schimba folderul curent cu cel specificat"
+$ cd .. 				"urca in ierarhia de foldere, la parinte"
+$ cat file_name 			"afiseaza continutul unui fisier"
+$ echo message 				"afiseaza un mesaj la standard output"
+$ grep strig_to_find in_file 		"cauta string_to_find in fisierul in_file"
+$ rm file 				"sterge fisierul file"
+$ mkdir folder_name			"creeaza un folder cu numele folder_name"
+				</code></pre>
+			</div>
+
+			<button type="button" class="collapsible">Ce este <b>GCC</b>-ul?</button>
+            <div class="content">
+                <p><b>GCC</b> (<i>GNU Compiler Collection</i>) este o suita de compilatoare disponibila pe majoritatea distributiilor Linux. 
+					Este folosit pentru a compila o paleta larga de limbaje de programare precum C, C++, Java, Fortran, Objective-C. 
+					Un <b>fisier sursa</b> reprezinta un fisier text in care este scris cod corespunzator unui anumit limbaj de programare. 
+					Dintr-un fisier sursa C se obtine, prin procesul de compilare, un fisier executabil. 
+					Compilarea se realizeaza in Linux prin comanda <b>gcc</b>. 
+					<pre><code>$ gcc main.c</code></pre>
+					(sau cu <i>g++</i> pentru C++)
+					In urma acestor comenzi va aparea un fisier denumit implicit <i>a.out</i>. Acesta este un fisier executabil ce poate sa fie lansat prin comanda: 
+					<pre><code>$ ./a.out</code></pre>
+					Daca se doreste obtinerea unui executabil cu alt nume se poate folosi optiunea <i>-o</i>.
+					<pre><code>$ gcc main.c -o my-exec</code></pre>
+				</p>
+            </div>
+
+			<button type="button" class="collapsible">Care sunt <b>fazele compilarii</b>?</button>
+			<div class="content">
+				<b>GCC</b>-ul trece prin mai multe faze de prelucrare a fisierului sursa pana la obtinerea executabilului. Folosind diverse optiuni, putem opri compilarea la una dintre fazele intermediare.
+
+				<ol>
+					<li><b>Precompilarea sau preprocesarea</b></li>
+					<p>In urma procesului de preprocesare, se realizeaza substitutii in fisierul sursa la intalnirea comenzilor de preprocesare care incep cu caracterul <i>#</i>. Pentru a opri <b>gcc</b>-ul la aceasta faza, introducem comanda:
+					<pre><code>$ gcc -E main.c</code></pre></p>
+
+					<li><b>Compilarea</b></li>
+					<p>Compilarea este faza in care, din fisierul preprocesat, se obtine un fisier in limbaj de asamblare. Pentru a opri <b>gcc</b>-ul la aceasta faza, introducem comanda:</p>
+					<pre><code>$ gcc -S main.c</code></pre>
+
+					<li><b>Asamblarea</b></li>
+					<p>Asamblarea este faza in care codul scris in limbaj de asamblare este tradus in <i>cod masina</i>, reprezentand codificarea binara a instructiunilor programului initial. 
+					Fisierul obtinut poarta numele de fisier <i>cod obiect</i>. Pentru a opri <b>gcc</b>-ul la aceasta faza, introducem comanda:</p>
+					<pre><code>$ gcc -c main.c</code></pre>
+
+				</ol>
+			</div>
+
+			<button type="button" class="collapsible">Ce sunt <b>argumentele in linia de comanda</b>?</button>
+			<div class="content">
+				In <i>runtime</i>-ul de C al sistemului de operare, exista functia <i>start</i> ce face apel la functia <i>main</i>, scrisa de utilizator. Aceasta are urmatorul prototip:
+			<pre><code class="language-c">
+int main(int argc, char** argv, char** arge)
+			</code></pre>
+			<ul>
+				<li><i>argc</i> este numarul de argumente;</li>
+				<li><i>argv</i> este un <i>array</i> de siruri de caractere, reprezentand valorile celor <i>argc</i> argumente. <i>argv[argc] = NULL</i>, iar <i>argv[0]</i> este numele programului executabil;</li>
+				<li><i>arge</i> este un <i>array</i> de siruri de caractere, reprezentand variabilele de mediu si valorile acestora.</li>
+			</ul>
+			In general, al treiela argument lipseste.
+			</div>
+
+			<button type="button" class="collapsible">Ce este <b>kernelul</b>?</button>
+			<div class="content">
+				<b>Kernel</b>-ul este cea mai importanta componenta a sistemului de operare. El reprezinta componenta software fundamentala ce manageriaza toate resursele calculatorului.
+				Printre rolurile sale se numara managementul memoriei, lucrul cu serviciile de retea, managementul proceselor, accesul la periferice etc.
+				<b>Kernel</b>-ul reprezinta o interfata care ii este expusa programatorului, care se ocupa de orice interactiune cu dispozitivile I/O, de retea etc. 
+			</div>
+
+			<button type="button" class="collapsible">Ce este un <b>API</b>?</button>
+			<div class="content">
+				Un <b>API</b> (<i>Application Programming Interface</i>) reprezinta o interfata prin care se pot construi aplicatii mai complexe pornind de la ceva deja scris.
+				<b>API</b>-ul este strans legat de paradigma limbajului in care ne scriem programele. In limbajele procedurale precum C, avem la dispozitie proceduri pentru I/O, manipulare de stringuri, 
+				iar in limbajele orientate pe obiecte precum Java, C#, C++ avem la dispozitie clase pentru astfel de operatii. 
+			</div>
+
+			<button type="button" class="collapsible">Ce este <b>POSIX</b>?</button>
+			<div class="content">
+				La inceputurile sale, sistemul de operare UNIX exista in mai multe versiuni ce functionau pe calculatoare cu arhitecturi diferite, versiuni ce erau departe de a fi complet compatibile. 
+				Din acest motiv, a fost nevoie de o standardizare a modului in care utilizatorii interactiuneaza cu sistemul.
+				Acest standard a primit numele <b>POSIX</b> (<i>Portable Operating System Interface</i>). Ultimul <i>X</i> este adaugat deoarece majoritatea variantelor UNIX se termina in X. 
+				<b>POSIX</b> documenteaza un API pentru un set de servicii ce ar trebui puse la dispozitie unui program de catre un sistem de operare. Standardul la care se conformeaza sistemele de operare 
+				din familia Windows se numeste <b>WinAPI</b>. 
+			</div>
+
+			<button type="button" class="collapsible">Ce este un <b>fisier</b> si cum se gestioneaza <b>sistemul de fisiere</b>?</button>
+			<div class="content">
+				<b>Fisierul</b> reprezinta un concept fundamental in sistemele de operare si reprezinta modul prin care sistemul isi organizeaza informatia pe care o foloseste. 
+				Fisierul este identificat de utilizator prin <i>nume</i> si <i>cale</i>, dar sistemul il recunoaste dupa numarul sau de <b>i-node</b>. 
+				Acest <b>i-node</b> este o structura de date ce este folosita pentru a reprezenta unic un obiect din sistemul de fisiere. 
+
+				Exista mai multe tipuri de fisiere:
+				<ul>
+					<li>fisiere de tip <b>regular</b>: orice fisiere ce reprezinta o insiruire simpla de bytes (text, executabile etc.);</li>
+					<li>fisiere de tip <b>director</b>: fisierele care memoreaza legatura dintre numerele de <i>i-node</i> si numele atribuite fisierelor;</li>
+					<li>fisiere de tip <b>pipe</b>: fisiere prin care se face o comunicare unidirectionala si functioneaza pe principiul FIFO;</li>
+					<li>fisiere de tip <b>socket</b>: folosite pentru comunicare in retea;</li>
+					<li>fisiere de tip <b>legatura simbolica</b>: in zona sa de date reprezinta o referinta catre un alt <i>i-node</i> din sistem.</li>
+				</ul>
+
+				Gestionarea fisierelor se face prin intermediul a trei tabele: <b>tabela de descriptori</b>, <b>tabela de fisiere deschise</b> si <b>tabela de i-node-uri</b>. 
+
+				<ul>
+					<li><b>Tabela de descriptori</b>. Fiecare proces are o tabela de descriptori, constituita dintr-un <i>array</i> de structuri, indexat de la 0 la cel mai mare descriptor posibil. 
+					Daca procesul a asociat unui fisier un descriptor <b>i</b> (numar natural), intrarea <b>i</b> din aceasta tabela e completata cu informatii specifice, printre care un pointer la o intrare in tabela de fisiere deschise. 
+					De regula, primii trei descriptori sunt asignati automat, dupa cum urmeaza: 0 = intrarea standard, 1 = iesirea standard, 2 = iesirea standard pentru erori. 
+					Ei pot fi desemnati si prin urmatoarele constante simbolice, definite in "unistd.h": STDIN_FILENO (=0), STDOUT_FILENO (=1), STDERR_FILENO (=2). </li>
+					<li><b>Tabela de fisiere deschise</b> este o tabela partaja de toate procesele. Orice intrare din tabela de descriptori, a oricarui proces, memoreaza adresa unei intrari din aceasta tabela. 
+					La deschiderea unui fisier de catre un proces, se creeaza o noua intrare in tabela de descriptori a procesului <b>si</b> o noua intrare in tabela de fisiere deschise. Aceasta contine un pointer catre 
+					o intrare din tabela de <i>i-node</i>-uri din memorie. </li>
+					<li><b>Tabela de <i>i-node</i>-uri</b>. La deschiderea unui fisier, in caz ca datele despre <i>i-node</i>-ul corespunzator nu se gasesc deja in aceasta tabela, se creeaza o intrare.</li> 
+				</ul>
+				<br>
+				<b>Operatii asupra fisierelor </b>
+				<ul>
+					<li>Deschiderea unui fisier</li>
+					<pre><code class="language-c">int open(char* file_name, int mode, mode_t permissions)</code></pre>
+					Aceasta metoda intoarce descriptorul corespunzator intrarii din tabel pentru fisierul cu numele <b>file_name</b>, deschis cu modul <b>mode</b> si cu masca de drepturi <b>permissions</b>. <br>
+					In caz de succes, se intoarce cel mai mic descriptor liber, altfel se intoarce -1 si se seteaza <b>errno</b>. <br>
+					Headere necesare: <b>sys/types.h</b>, <b>sys/stat.h</b>, <b>fcntl.h</b><br>
+
+					<li>Inchiderea unui fisier</li>
+					<pre><code class="language-c">int close(int descriptor)</code></pre>
+					Inchide descriptorul de fisier deschis in prealabil. Functia intoarce 0 in caz de succes, respectiv -1 in caz de esec si seteaza <b>errno</b>. <br>
+					Headere necesare: <b>unistd.h</b><br>
+
+					<li>Citirea din fisier</li>
+					<pre><code class="language-c">ssize_t read(int descriptor, void* destination, size_t bytes)</code></pre>
+					Citeste din fisierul indicat de <b>descriptor</b> un numar de <b>bytes</b> octeti si ii pune in <b>destination</b>. <br>
+					Aceasta destinatie trebuie sa fie alocata in prealabil. In caz de succes, intoarce numarul de octeti cititi, care poate fi mai mic decat <b>bytes</b>.<br>
+					In caz de esec, intoarce -1 si seteaza <b>errno</b>.
+					Headere necesare: <b>unistd.h</b><br>
+
+					<li>Scrierea in fisier</li>
+					<pre><code class="language-c">ssize_t write(int descriptor, void* source, size_t bytes)</code></pre>
+					Scrie in fisierul indicat de <b>descriptor</b> un numar de <b>bytes</b> octeti din <b>source</b>. <br>
+					In caz de succes, intoarce numarul de octeti scrisi, iar in caz de esec intoarce -1 si seteaza <b>errno</b>.<br>
+					Headere necesare: <b>unistd.h</b>
+				</ul>
+			</div>
+
+        </section>
+
+		<section id="processes">
+			<h2>Procese</h2>
+
+			<br>
+
+			<h3 id="process-intuition">Intuitia despre procese</h3>
+
+			<br>
+			Un <b>proces</b> este o instanta a unui program. Acesta este modul prin care sistemul de operare abstractizeaza executia unui program. <br>
+			Dintr-un program se pot crea mai multe procese care sunt, insa, independente logic.
+
+			<br><br>
+			<h3 id="process-differences">Diferenta dintre un program si un proces</h3>
+			<br>
+
+			Un <b>program</b> este o entitate pasiva ce descrie modul in care ar trebui sa se execute un proces. 
+			Acesta se afla salvat pe disc sub forma unui fisier numit <b>executabil</b> (ELF - executable and linking format, PE - portable executable).
+			<br>
+			Fisierele executabile sunt, din punctul de vedere al sistemului de operare, fisiere de tip <b>regular</b>. 
+
+			<br> 
+
+			Un <b>proces</b> este o entitate activa ce reprezinta imaginea in memoria principala (RAM) a unui program. Pentru orice cerere a utilizatorului, sistemul de operare laneaza un proces pentru a o satisface. 
+			De gestiunea proceselor se ocupa <b>kernel</b>-ul sistemului de operare. Pentru a putea realiza acest lucru, acesta are nevoie sa tina intern o structura pentru fiecare proces existent, numita <b>PCB - Process Control Block</b>.
+
+			<br><br>
+			<h3 id="process-pcb">Process Control Block</h3>
+			<br>
+
+			<table style="border: 1px solid black; text-align:center; width:400px;">
+				<tr style="border: 1px solid black;">
+					<td style="border: 1px solid black;">pointer</td>
+					<td style="border: 1px solid black;">process state</td>
+				</tr>
+				<tr style="border: 1px solid black;">
+					<td colspan="2" style="border: 1px solid black;">process number</td>
+				</tr>
+				<tr style="border: 1px solid black;">
+					<td colspan="2" style="border: 1px solid black;">process counter</td>
+				</tr>
+				<tr style="border: 1px solid black;">
+					<td rowspan="2" colspan="2" style="border: 1px solid black;">
+						<br>
+						registers
+						<br/><br>
+				</td>
+				</tr>
+				<tr style="border: 1px solid black;"></tr>
+					<td colspan="2" style="border: 1px solid black;">memory limits</td>
+				</tr>
+				<tr style="border: 1px solid black;"></tr>
+					<td colspan="2" style="border: 1px solid black;">list of open files</td>
+				</tr>
+				<tr style="border: 1px solid black;"></tr>
+					<td colspan="2" style="border: 1px solid black;">...</td>
+				</tr>
+			</table>
+
+			<br>
+			Unele dintre cele mai importante informatii continute de un PCB sunt: 
+			<ul>
+				<li>identificatorul unic al procesului;</li>
+				<li>spatiul de adresa;</li>
+				<li>valoarea registrilor generali: <b>PC</b> (program counter) si <b>SP</b> (stack pointer);</li>
+				<li>tabela de descriptori deschisi;</li>
+				<li>directorul de lucru;</li>
+				<li>identificatorul proprietarului;</li>
+				<li>starea procesului.</li>
+			</ul>
+
+			<br>
+
+
+			<b>PID</b>-ul (<i>process identification</i>) reprezinta identificatorul unic al unui proces din sistem. 
+			Aceasta este cea mai importanta caracteristica a unui proces si este folosita in majoritatea API-urilor POSIX de lucru cu procese. 
+
+			Pentru a obtine PID-ul curent, se utilizeaza functia <pre><code class="language-c">pid_t getpid()</code></pre>
+			iar pentru a intoarce PID-ul parintelui, se foloseste functia <pre><code class="language-c">pid_t getppid()</code></pre>
+			(ambele functii sunt in <b>unistd.h</b>)
+
+			<br> 
+
+			Pentru a crea un proces nou, se utilizeaza apelul sistem <pre><code class="language-c">pid_t fork()</code></pre>
+			Apelul este declarat in <b>unistd.h</b>. Executarea acestui apel realizeaza un nou proces, copie fidela a procesului ce a efectuat apelul. Sistemul ii va aloca un nou PID 
+			si o parte dintre datele si resursele procesului apelant. Apelul returneaza PID-ul fiului in contextul procesului tata, respectiv 0 in contextul procesului fiu. Daca apelul esueaza, atunci intoarce -1.
+
+			<br><br>
+
+			Procesele sunt organizate sub forma ierarhica pe principiul tata-fiu si sunt abstractizate in sistemul virtual de fisiere din <b>/proc</b>, unde pentru fiecare PID exista un director aferent. 
+			Primul proces lansat de <b>kernel</b>, dupa ce a fost incarcat in memorie de catre <b>bootloader</b> este <b>init</b>. 
+			Acesta are PID-ul 1 si este lansat dupa imaginea din <b>/sbin/init</b>. Procesul init este tatal majoritatea proceselor de sistem, ce asigura buna functionare a calculatorului.
+			Un proces poate avea oricati fii, dar doar un singur tata. Pentru a afisa ierarhia de procese ce sunt active la un moment dat in sistem se foloseste comanda: 
+			<pre><code>$ pstree</code></pre>
+
+			O alta caracteristica importanta a unui proces este id-ul proprietarului. Acesta poate sa fie diferit de proprietarul fisierului executabil din care s-a creat procesul, pentru ca id-ul este al utilizatorului care a lansat procesul.
+			
+			<br> 
+			Pe parcursul executiei unui proces, el se poate afla in doua moduri: <b>user mode</b> (cand executa instructiuni de utilizator, executa algoritmi, rezolva probleme, lucruri uzuale) 
+			sau <b>kernel mode</b> (atunci cand executa instructiuni privilegiate precum scrierea pe disk, citirea de pe un socket de retea, afisare pe ecran). 
+			Un proces intra in <b>kernel mode</b> atunci cand executa un <b>apel de sistem</b>. Intrucat, din punctul de vedere al programatorului, un apel sistem seamana cu un apel normal de functie C, putem imparti functiile 
+			din C in doua categorii: <b>functii de biblioteca</b> (functii uzuale, precum cele de manipulare de stringuri, precum <i>strlen()</i>, <i>strcat()</i> etc) si <b>functii de apel de sistem</b>.
+			<br>
+			
+			Pentru a afla informatii despre procesele ce ruleaza in sistem se foloseste comanda: 
+			<pre><code>$ ps</code></pre>
+			Lansata fara niciun argument, aceasta va afisa procesele ce a ufost lansate de la terminalul curent. Pentru a afisa informatii despre toate proceslee din sistem, se utilizeaza cu argumentele 
+			<pre><code>$ ps -e 
+$ ps -p pid1, pid2, ..., pidn
+$ ps -C cmd1, cmd2, ..., cmdn 
+$ ps -u user1, user2, ..., usern</code></pre>
+			Comanda <pre><code>$ top</code></pre> afiseaza, in mod dinamic, informatii complete despre procesele ce ruleaza in sistem.
+			
+			<br><Br>
+			<h3 id="process-states">Starile procesului</h3>
+			<br>
+
+
+			Un proces, pe toate durata executiei sale, se poate afla intr-una dintre urmatoarele stari. Starea curenta este tinuta in PCB. Starile sunt:
+			<ul>
+				<li><b>NEW</b> - procesul abia a fost lansat;</li>
+				<li><b>READY</b> - procesului i-au fost alocate toate resursele necesare de catre sistemul de operare si asteapta timp de la procesor;</li>
+				<li><b>RUNNING</b> - instructiunile procesului sunt rulate pe procesor;</li>
+				<li><b>SLEEPING</b> - procesul este <i>adormit</i>, asteptand un eveniment extern pentru a fi trezit;</li>
+				<li><b>SUSPENDED</b> - procesul este suspendat si asteapta primrea unui semnal din partea sistemului de operare pentru a continua executia;</li>
+				<li><b>ZOMBIE</b> - procesul este terminat si asteapta ca parintele sa ia act de acest lucru.</li>
+			</ul>
+			<img src="images/linux-process-thread-model.png"/>
+
+			<br>
+
+			In timp ce este in <b>RUNNING</b>, un proces poate executa instructiuni de utilizator, si atunci spunem ca este in <b>user space</b>, sau instructiuni de sistem privilegiate, si atunci spunem ca este in <b>kernel space</b>.
+
+			Un proces poate sa fie rulat in doua moduri, in <b>foreground</b> (acapareaza terminalul curent, poate sa citeasca input de la utilizator, iar prompt-ul shell-ului ne revine doar atunci cand procesul s-a terminat),
+			sau in <b>background</b> (atunci cand prompt-ul de la shell ne revine imediat, procesul isi continua executia, insa nu mai poate primi input de la standard input).
+
+
+			<br><br>
+			<h3 id="process-virtual-memory">Memoria virtuala</h3>
+			<br>
+
+			Sistemele de operare moderne o facilitate foarte importanta care se numeste <b>multitasking</b>. Aceasta facilitate inseamna ca sistemul poate tine 
+			in memoria principala mai multe programe ce pot sa fie executate pe procesor intr-un mod echitabil prin ceea ce se numeste <b>context switching</b>. 
+
+			<br>
+
+			Aceasta abordare aduce, insa, o problema: spatiul de adresare a doua procese poate sa se suprapuna si sa cauzeze o alterare a integritatii datelor. Astfel, s-a introdus un mecanism ce se numeste <b>memorie virtuala</b>. 
+			Prin acest mecanism, spatiul de adresare a unui proces este <i>virtualizat</i> - adresele sale sunt, de fapt, 
+			adrese virtuale ce sunt mapate la adrese fizice de catre o componenta din procesor ce poarta numele <b>MMU - Memory Management Unit</b>.
+
+			<br> 
+
+			Memoria virtuala a unui proces se imparte in mai multe segmente. Acestea sunt <b>zona de text</b> (contine instructiunile cod masina ale procesului), 
+			<b>zona de date initializate</b> (contine variabilele globale si statice initializate ce sunt citite din executabil la momentul incarcarii programului), 
+			<b>zona de date neinitializate (contine variabile globale si statice neinitializate, care sunt definite doar la nivel de simbol si sunt initializate cu valori aleatoare la runtime)</b>, 
+			<b>stack</b>-ul (zona de memorie a carei dimensiuni este definita dinamic la runtime, unde sunt retinute variabilele locale si argumentele functiilor)
+			si <b>heap</b>-ul (zona de memorie unde se pot aloca variabile dinamic). 		
+			
+			<br><br>
+			<h3 id="process-zombie">Terminarea proceselor. Procese zombie. Sincronizarea tata-fiu</h3>
+			<br>
+			Un proces se poate termina <b>anormal</b> (atunci cand apar exceptii - efectueaza o impartire la 0, dereferentiaza un pointer NULL etc), sau <b>normal</b> (atunci cand executa un apel de sistem <i>_exit()</i>).
+
+			<br><br>
+
+			<b>Procese zombie si sincronizarea tata-fiu</b>. De cele mai multe ori, procesele tata si fiu nu se termina in acelasi timp, intre ele existand un comportament asincron. Se disting trei scenarii,
+			<b>proceslee se termina in acelasi timp</b>, <b>procesul tata se termina inaintea procesului fiu</b> (caz in care procesul fiu devine <i>orfan</i> si este adoptat de un proces a carui imagine a fost comanda <b>/sbin/init</b>),
+			respectiv <b>procesul fiu se termina inaintea procesului tata</b> (caz in care procesul fiu trece in starea <b>ZOMBIE</b>, asteptand ca tatal sa ia act de terminarea sa. Daca, totusi, tatal nu ia act de terminarea sa,
+			atunci noul tata, <b>init</b>, va lua act de terminarea sa si zombie-ul va iesi din tabela de procese a sistemului).
+
+			<br><br>
+
+			Procesul tata poate executa urmatorul apel pentru a lua la cunostinta terminarea proceselor fiu: 
+			<pre><code class="language-c">#include < sys/types.h >
+#include < sys/wait.h >
+pid_t wait(int* status)
+</code></pre>
+			Daca nu exista niciun proces fiu, atunci apelul va returna -1 si va seta <b>errno</b>. Daca exista procese fiu, atunci apelul va bloca procesul curent pana cand unul dintre acestea se va termina si va intoarce 
+			PID-ul primului proces returnat si va stoca starea sa in adresa indicata de pointerul transmis ca parametru. Avem si varianta de a astepta dupa un proces cu un anumit pid: 
+			<pre><code class="language-c">pid_t waitpid(pid_t pid, int* status, int options)</code></pre>
+		</section>
+
+        <section id="section4">
+            <h2>Link-uri utile</h2>
+            <ul>
+                <li><a href="#">Documentație C</a></li>
+                <li><a href="#">Tutoriale suplimentare</a></li>
+            </ul>
+        </section>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+
+    <script>
+        document.getElementById('toggle-btn').addEventListener('click', function () {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+        });
+
+        const sections = document.querySelectorAll('section');
+        const navLinks = document.querySelectorAll('nav ul li a');
+
+        window.addEventListener('scroll', function () {
+            let current = '';
+
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (pageYOffset >= sectionTop - sectionHeight / 3) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href').substring(1) === current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        var coll = document.getElementsByClassName("collapsible");
+        for (var i = 0; i < coll.length; i++) {
+            coll[i].addEventListener("click", function () {
+                this.classList.toggle("active");
+                var content = this.nextElementSibling;
+                if (content.style.display === "block") {
+                    content.style.display = "none";
+                } else {
+                    content.style.display = "block";
+                }
+            });
+        }
+    </script>
+</body>
+</html>
